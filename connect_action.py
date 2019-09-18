@@ -27,6 +27,8 @@ from .maindialog import MongoConnectorDialog
 from .qgsmongolayer import QgsMongoLayer
 from qgis.core import *
 from pymongo import MongoClient
+import json
+import os
 
 class ConnectAction(QAction):
     """
@@ -39,7 +41,15 @@ class ConnectAction(QAction):
         self.plugin=plugin
         self.iface=plugin.iface
         self.dlg=MongoConnectorDialog()
-        self.mongo_client=MongoClient(serverSelectionTimeoutMS=2000)
+
+        if ( os.path.isfile("config.json") is True ):
+            with open("config.json", "r") as f:
+                con_file = json.load(f)
+                self.connectionString = con_file["connString"]
+        else:
+            self.connectionString = "localhost"
+
+        self.mongo_client=MongoClient(self.connectionString, serverSelectionTimeoutMS=2000)
 
         # binding frontend actions with logic
         self.dlg.connectButton.clicked.connect(self.reconnect)
@@ -47,12 +57,16 @@ class ConnectAction(QAction):
         self.dlg.collectionBox.activated[str].connect(self.collection_box_change)
         self.dlg.geometryFieldBox.activated[str].connect(self.geometry_field_box_change)
         self.dlg.geojsonCheckBox.stateChanged.connect(self.geojson_check_box_changed)
+        self.dlg.connStringEdit.appendPlainText(self.connectionString)
 
     def reconnect(self):
         """
         Fill available databases to combobox
         :return:
         """
+        self.connectionString = self.dlg.connStringEdit.toPlainText()
+        self.mongo_client=MongoClient(self.connectionString, serverSelectionTimeoutMS=2000)
+
         self.dlg.databaseBox.setEnabled(False)
         self.dlg.databaseBox.clear()
         self.clearComboBoxData()
@@ -62,6 +76,8 @@ class ConnectAction(QAction):
             self.dlg.databaseBox.addItems(dbs)
             self.dlg.databaseBox.setEnabled(True)
 
+        with open("config.json", "w") as f:
+            f.write("{" + "\"connString\":" + "\"" + self.connectionString + "\"}")
 
     def database_box_change(self,text):
         """

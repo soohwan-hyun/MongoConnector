@@ -27,8 +27,8 @@ import uuid
 
 
 class QgsMongoLayer(QgsVectorLayer):
-
-    def __init__(self,mongoConnector,database,collection,geometryField,geometryFieldType):
+    def __init__(self,mongoConnector, database, collection, geometryField, geometryFieldType):
+        print("__init__")
         self.mongoConnector=mongoConnector
         self.database=database
         self.collection = collection
@@ -43,11 +43,9 @@ class QgsMongoLayer(QgsVectorLayer):
         self.reference_item=self.data[0]
 
         self.featuresKeys=self.getFeatureKeys(self.data[0])
-        print(self.featuresKeys)
 
         if not all([(type(key)==str or type(key)==unicode) for key in self.featuresKeys]):
-            raise TypeError("All attribute names in feature must be string."+
-                      "Check object "+str(self.reference_item_id))
+            raise TypeError("All attribute names in feature must be string."+ "Check object "+str(self.reference_item_id))
 
         if "_id" in self.featuresKeys:
             self.featuresKeys.remove("_id")
@@ -65,14 +63,13 @@ class QgsMongoLayer(QgsVectorLayer):
         self.featuresKeyQVariant=dict([(key,self.getKeyType(key)[1])
                                    for key in self.featuresKeys])
 
-
         # We take first item geometry as layer geometry (as reference)
-
         self.addLayer()
-
         self.startEditing()
-
         self.setLayerAttributes()
+
+        #print("GEOMETRIES")
+        #print(self.geometryType)
 
         # add layer features
         for feature in self.data:
@@ -85,11 +82,8 @@ class QgsMongoLayer(QgsVectorLayer):
                                  str(feature["_id"])+
                                  " or "+str(self.reference_item_id))
 
-            if geometryFieldType=="geojson":
-                geometryList=feature[geometryField]["coordinates"]
-            else:
-                geometryList=feature[geometryField]
-
+            #print(feature)
+            geometryList=feature[geometryField]["coordinates"]
 
             if self.geometryType=="Point":
                 qfeature.setGeometry(QgsGeometry.fromPointXY(
@@ -147,7 +141,6 @@ class QgsMongoLayer(QgsVectorLayer):
         Creates described layer point/line...
         :return: None
         """
-
         super(QgsMongoLayer,self).\
             __init__(self.geometryType,
                      self.collection+'-'+str(uuid.uuid4())[0:4],
@@ -178,7 +171,7 @@ class QgsMongoLayer(QgsVectorLayer):
         return (str,QVariant.String)
 
     def getFeatureKeys(self,feature):
-        print(self.geometryFieldType,feature.keys())
+        #print(self.geometryFieldType,feature.keys())
         if self.geometryFieldType=="geojson" and "properties" in feature.keys():
             return list(feature["properties"].keys())
         else:
@@ -207,7 +200,6 @@ class QgsMongoLayer(QgsVectorLayer):
         attributes=[]
         for key in self.featuresKeys:
             try:
-
                 attrib=self.featuresKeyType[key](self.getFeatureValue(feature,key))
             except UnicodeEncodeError as e:
                 # if unicode we simply pass it (it's a string)
@@ -226,8 +218,16 @@ class QgsMongoLayer(QgsVectorLayer):
         :param feature: one feature for witch we try to recognize geometry
         :return: 'point' for point geometry 'line' for line geometry
         """
-        if self.geometryField not in feature.keys():
-            raise IndexError("No geometry in object "+str(feature["_id"]))
+        #print("getGeometryType")
+        #print(self.geometryField)
+        #print(feature.keys())
+
+        #if self.geometryField not in feature.keys():
+            #print("No geometry in object "+str(feature["_id"]))
+            #raise IndexError("No geometry in object "+str(feature["_id"]))
+
+        #print(len(feature[self.geometryField]))
+
         if self.geometryFieldType == "geojson":
             if "type" not in feature[self.geometryField]:
                 raise ValueError("Unknown geojson geometry type in object "+str(feature["_id"]))
@@ -236,22 +236,7 @@ class QgsMongoLayer(QgsVectorLayer):
             return feature[self.geometryField]["type"]
         else:
             try:
-                if len(feature[self.geometryField])==2 and ((
-                                isinstance(feature[self.geometryField][0],int) or
-                                isinstance(feature[self.geometryField][0],float)) and (
-                                isinstance(feature[self.geometryField][1],int) or
-                                isinstance(feature[self.geometryField][1],float))):
-                    return "Point"
-
-                if isinstance(feature[self.geometryField],list) and \
-                    all([(isinstance(element,list) or isinstance(element,tuple)) and
-                            len(element)==2 and ((
-                            isinstance(element[0],int) or
-                            isinstance(element[0],float)) and (
-                            isinstance(element[1],int) or
-                            isinstance(element[1],float)))
-                         for element in feature[self.geometryField]]):
-                    return "LineString"
+                return feature[self.geometryField]['type']
             except:
                 pass
 
