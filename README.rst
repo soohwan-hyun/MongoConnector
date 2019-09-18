@@ -24,3 +24,7 @@ Usage:
     - Choose geometry field in collection
 
 Please refer data example for more details.
+
+-------------
+
+I added connection string editbox and edit geometry loading parts.
